@@ -1,0 +1,119 @@
+# Continuous integration for the Java server SDK.
+#
+# This workflow IS the merge gate described in Founding CLAUDE.md §7.5 and §9. We cannot
+# recall a shipped SDK: anything that gets past this gate runs inside customers' processes
+# until they upgrade on their own schedule.
+#
+# NOTE for whoever adds the branch ruleset: add these three job names as required checks
+# *after* this file lands on `development` (docs/compliance/change-management.md in
+# FortressFlag_Backend). Requiring a check that has never reported blocks every merge
+# permanently.
+
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [development]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  quality:
+    # Both ends of the supported window run in THIS one job, sequentially, rather than as
+    # a matrix: a matrix leg reports its own check name, and the required-check list in
+    # the branch ruleset names exactly one (the Go SDK's arrangement, ported). The floor
+    # (17 — what `--release` pins) runs the full build; the newest LTS re-runs the tests
+    # via the toolchain override to catch anything its runtime surfaces differently.
+    name: Build, lint & unit tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          # Both JDKs installed up front; Gradle's toolchain support selects per leg.
+          java-version: |
+            17
+            25
+
+      - name: Build & test (floor, 17)
+        run: ./gradlew build --no-daemon
+
+      - name: Test (newest LTS, 25)
+        run: ./gradlew test --no-daemon -PjavaToolchain=25
+
+      - name: Zero runtime dependencies (ADR-0018)
+        # The dependencies block holds only test scopes — the go.sum gate, translated.
+        run: |
+          if grep -nE '^\s*(implementation|api|compileOnly|runtimeOnly)\(' build.gradle.kts; then
+            echo "::error::build.gradle.kts declares a runtime dependency — the runtime tree stays empty (ADR-0018)."
+            exit 1
+          fi
+          echo "Runtime dependency tree is empty."
+
+  crash-primitives:
+    name: No crash primitives in library sources
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Grep for crash primitives
+        # Deliberately a dumb grep, and deliberately separate from the compiler. A lint
+        # config is one pull request away from being relaxed with a plausible-looking
+        # justification; this is harder to weaken quietly. Call-position forms only.
+        # `throw` is NOT in this list on purpose: exceptions are legal internally (the
+        # parser throws to the verifier, which maps them to rejection codes) and the
+        # constructor legitimately throws — the never-throw-from-getters promise is the
+        # chaos suite's job.
+        run: |
+          if grep -rnE 'System\.exit\(|Runtime\.getRuntime\(\)\.halt\(' src/main/; then
+            echo "::error::Crash primitives found in src/main/. The SDK must never kill a customer's JVM."
+            exit 1
+          fi
+          echo "No crash primitives in library sources."
+
+  security:
+    name: Security scanning
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          # gitleaks needs history to scan commits, not just the working tree.
+          fetch-depth: 0
+
+      - name: gitleaks
+        env:
+          GITLEAKS_VERSION: 8.30.1
+          # SHA-256 of gitleaks_8.30.1_linux_x64.tar.gz, from the release's published
+          # checksums.txt. Bump both lines together — a version bumped without its
+          # checksum fails loudly here, which is intended.
+          #
+          # Deliberately NOT gitleaks/gitleaks-action@v2: that action requires a paid
+          # licence for organisation-owned repositories. This matches the backend and
+          # every SDK security job exactly.
+          GITLEAKS_SHA256: 551f6fc83ea457d62a0d98237cbad105af8d557003051f41f3e7ca7b3f2470eb
+        run: |
+          # pipefail matters: without it a curl that dies mid-stream is masked by a tar
+          # that happens to succeed on the truncated prefix.
+          set -euo pipefail
+          curl -sSfL -o "$RUNNER_TEMP/gitleaks.tar.gz" \
+            "https://github.com/gitleaks/gitleaks/releases/download/v${GITLEAKS_VERSION}/gitleaks_${GITLEAKS_VERSION}_linux_x64.tar.gz"
+          echo "${GITLEAKS_SHA256}  $RUNNER_TEMP/gitleaks.tar.gz" | sha256sum --check --strict -
+          tar -xzf "$RUNNER_TEMP/gitleaks.tar.gz" -C "$RUNNER_TEMP" gitleaks
+          # Unpacked outside the checkout so the scanner never sees its own artefacts.
+          "$RUNNER_TEMP/gitleaks" git . --redact --no-banner
+
+      - name: No checked-in signing keys
+        run: |
+          if grep -rlE 'BEGIN (RSA |EC |OPENSSH |PGP )?PRIVATE KEY' . --exclude-dir=.git; then
+            echo "::error::A private key is checked into this repository."
+            exit 1
+          fi
+          echo "No private keys checked in."
