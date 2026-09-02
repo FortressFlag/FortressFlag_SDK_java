@@ -12,7 +12,7 @@
 
 ## 1. This Repo
 
-The **Java server SDK** (backend ADR-0018, inheriting ADR-0016's decisions): zero
+The **Java server SDK** (backend ADR-0020, inheriting ADR-0016's decisions): zero
 dependencies, Java 17+. It embeds in a customer's backend, downloads the full evaluable
 ruleset for one project + environment via an `ffs_` server key (`GET /v1/server/ruleset`),
 and evaluates flags **locally, in-process**. It implements
@@ -39,7 +39,7 @@ and evaluates flags **locally, in-process**. It implements
   DAEMON ThreadFactory, and `close()` shuts it down — the daemon flag is load-bearing, not
   tidiness; removing it turns "embed FortressFlag" into "your app never terminates".
 
-## 3. The JSON parser is in-repo, bounded by design (ADR-0018)
+## 3. The JSON parser is in-repo, bounded by design (ADR-0020)
 
 Java's stdlib has no JSON parser, and the zero-dependency rule collides with reality
 exactly once. The user chose owning the surface over the first runtime dependency in any
@@ -73,7 +73,7 @@ contexts), never transmitted. The context key is an **opaque string** — never 
 against the client SDKs' `dev_`/`sim_` shape, never trimmed or normalised: the bucket
 hashes exactly the UTF-8 bytes given, or cohorts flip between components.
 
-## 6. Zero runtime dependencies (ADR-0018)
+## 6. Zero runtime dependencies (ADR-0020)
 
 The `dependencies` block in `build.gradle.kts` holds **only `testImplementation` /
 `testRuntimeOnly`, and CI greps the file for `implementation(`/`api(`**. Everything the SDK
@@ -91,7 +91,7 @@ refused (`Redirect.NEVER` — a followed redirect could replay the Authorization
 BOTH `connectTimeout` and the per-request timeout set (connect alone lets a slow body hang
 the poller); bodies capped at 1 MiB.
 
-## 8. Concurrency model (ADR-0018)
+## 8. Concurrency model (ADR-0020)
 
 The snapshot is a `volatile` reference publishing an immutable object; getters read it ONCE
 into a local and evaluate against that. Counters are `LongAdder`; mutable diagnostic state

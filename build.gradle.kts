@@ -1,4 +1,4 @@
-// The library build. ZERO runtime dependencies (ADR-0018): the dependencies block below
+// The library build. ZERO runtime dependencies (ADR-0020): the dependencies block below
 // holds ONLY testImplementation, and CI greps this file for implementation(/api( — the
 // go.sum-must-not-exist gate, translated. A runtime dependency is a supply-chain decision
 // the user owns: ask, don't add. There is deliberately no maven-publish plugin: Maven
