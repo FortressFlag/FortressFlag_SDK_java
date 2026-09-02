@@ -1,5 +1,5 @@
 /**
- * The FortressFlag Java server SDK (backend ADR-0018).
+ * The FortressFlag Java server SDK (backend ADR-0020).
  *
  * <p>The public surface is this package's public types — everything else is package-private
  * or in internal packages. {@code FortressFlag.create} is the one place the SDK throws;

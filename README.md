@@ -1,6 +1,6 @@
 # FortressFlag Java SDK
 
-FortressFlag's **Java server SDK** (backend ADR-0018): zero dependencies — including JSON,
+FortressFlag's **Java server SDK** (backend ADR-0020): zero dependencies — including JSON,
 whose bounded parser lives in this repo. Polls the server data plane's ruleset export with
 an `ffs_` server key and evaluates flags **locally, in-process** — no network hop per flag
 check. Java 17+.

@@ -49,11 +49,11 @@ jobs:
       - name: Test (newest LTS, 25)
         run: ./gradlew test --no-daemon -PjavaToolchain=25
 
-      - name: Zero runtime dependencies (ADR-0018)
+      - name: Zero runtime dependencies (ADR-0020)
         # The dependencies block holds only test scopes — the go.sum gate, translated.
         run: |
           if grep -nE '^\s*(implementation|api|compileOnly|runtimeOnly)\(' build.gradle.kts; then
-            echo "::error::build.gradle.kts declares a runtime dependency — the runtime tree stays empty (ADR-0018)."
+            echo "::error::build.gradle.kts declares a runtime dependency — the runtime tree stays empty (ADR-0020)."
             exit 1
           fi
           echo "Runtime dependency tree is empty."

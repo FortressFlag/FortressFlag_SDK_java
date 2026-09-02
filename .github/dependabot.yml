@@ -1,5 +1,5 @@
 # Weekly, grouped, labeled. The gradle entry watches the wrapper and the test-only
-# dependency block: the runtime dependency policy is ZERO dependencies (ADR-0018) and CI
+# dependency block: the runtime dependency policy is ZERO dependencies (ADR-0020) and CI
 # greps build.gradle.kts to enforce it. Watching the dev/test tree is still SOC 2 CC7.1
 # hygiene — the toolchain builds what ships.
 version: 2
