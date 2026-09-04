@@ -15,7 +15,8 @@ import java.util.Map;
  *
  * <p>The walk, exactly as the contract states it: rules in order, first match wins; AND
  * within a rule with an EMPTY condition list holding vacuously (the terminal "everyone
- * else" rule); an absent tag key does not hold; eq/neq exact, case-sensitive, untrimmed;
+ * else" rule); an absent tag key does not hold; eq/neq exact and contains substring
+ * (backend ADR-0023), all case-sensitive and untrimmed;
  * semver via {@link Semver#parse} with an unparseable value on EITHER side not holding;
  * an unknown operator failing closed; the rollout gate computing the bucket at most once
  * per flag with a gated-out context falling THROUGH to later rules; a serve value that
@@ -66,6 +67,8 @@ final class Evaluator {
                 return tagValue.equals(condition.value());
             case "neq":
                 return !tagValue.equals(condition.value());
+            case "contains":
+                return tagValue.contains(condition.value());
             case "semver_eq":
             case "semver_gt":
             case "semver_gte":
