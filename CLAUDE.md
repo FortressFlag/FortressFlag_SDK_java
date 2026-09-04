@@ -55,7 +55,7 @@ The rules that keep ~300 lines of parser defensible:
 - It parses the contract's payloads and the vectors, nothing more. Streaming,
   data-binding, comments, trailing commas — growth is surface; wanting any of them is a
   conversation.
-- All 39 evaluation vectors run THROUGH this parser, and the chaos corpus feeds it
+- All evaluation vectors (42 as of ADR-0023) run THROUGH this parser, and the chaos corpus feeds it
   truncations of a valid payload at every byte.
 
 ## 4. The server key IS a secret (server-contract-v1, ADR-0015)
