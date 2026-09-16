@@ -1,6 +1,7 @@
 package com.fortressflag.server;
 
 import java.time.Duration;
+import java.util.Map;
 import java.util.regex.Pattern;
 
 /**
@@ -61,7 +62,7 @@ public final class Configuration {
         private String baseUrl = DEFAULT_BASE_URL;
         private Duration pollInterval = DEFAULT_POLL_INTERVAL;
         private String cachePath = "";
-        private SignaturePolicy signature = SignaturePolicy.disabled();
+        private SignaturePolicy signature = SignaturePolicy.fortressFlagProduction();
         private Duration httpTimeout = DEFAULT_HTTP_TIMEOUT;
 
         private Builder(String key) {
@@ -90,6 +91,10 @@ public final class Configuration {
             return this;
         }
 
+        /** Defaults to {@link SignaturePolicy#fortressFlagProduction()} — fail closed
+         * against the production key (ADR-0025). Pass {@link SignaturePolicy#disabled()}
+         * explicitly for a local backend without signing keys, or
+         * {@link SignaturePolicy#required(Map)} with the staging key. */
         public Builder signature(SignaturePolicy signature) {
             this.signature = signature;
             return this;

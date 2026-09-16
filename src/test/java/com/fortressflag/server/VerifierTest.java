@@ -105,10 +105,10 @@ final class VerifierTest {
         "ed25519:AAAA, MALFORMED_SIGNATURE",
         "p256:k1:AAAA, UNSUPPORTED_SIGNATURE_ALGORITHM",
         "ed25519:unknown:AAAA, UNKNOWN_KEY_ID",
-        // Well-formed, known key — still rejected: no primitive exists to accept it.
+        // Well-formed, known key, three bytes of signature — the primitive rejects it.
         "ed25519:k1:AAAA, BAD_SIGNATURE",
     })
-    void theFailClosedStub(String sig, RejectionCode expected) {
+    void everySignatureShapeFailsClosed(String sig, RejectionCode expected) {
         SignaturePolicy policy = SignaturePolicy.required(Map.of("k1", new byte[32]));
         Result result = Verifier.verify(Fixtures.envelope(Fixtures.payload(), sig), policy, LIVE);
         assertEquals(expected, result.code());

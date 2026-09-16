@@ -17,7 +17,7 @@ dependencies, Java 17+. It embeds in a customer's backend, downloads the full ev
 ruleset for one project + environment via an `ffs_` server key (`GET /v1/server/ruleset`),
 and evaluates flags **locally, in-process**. It implements
 `FortressFlag_Standards/contracts/server-contract-v1.md` and ports
-`vectors/evaluation.json` + `vectors/buckets.json` as unit tests. The contract is owned by
+`vectors/evaluation.json`, `vectors/buckets.json` and `vectors/signing.json` as unit tests. The contract is owned by
 `FortressFlag_Backend`; changes arrive only via ADRs there. The package is
 `com.fortressflag.server` — distinct from Android's `com.fortressflag.sdk` on purpose.
 
@@ -28,6 +28,10 @@ and evaluates flags **locally, in-process**. It implements
   and `Runtime.getRuntime().halt(`; the never-throw promise on getters is enforced by the
   chaos suite (exceptions are legal INTERNALLY — the parser rejects hostile JSON by
   throwing to the verifier, which maps it to a rejection code; nothing propagates out).
+- **Signature verification is pure Ed25519 via `java.security` (JEP 339), fail closed and
+  on by default with the production key in `TrustedKeys` (backend ADR-0025).** The key ID
+  grammar is `[a-z0-9-]+`, never a colon — the verifier splits `sig` at the first two
+  colons. `SignaturePolicy.disabled()` is the explicit local-dev opt-out, never a fallback.
 - `FortressFlag.create()` is the ONE place the SDK may throw
   (`MalformedKeyException`, before anything serves). Getters always answer; every failure
   resolves to the caller's fallback with the reason on `diagnostics()`. There is no

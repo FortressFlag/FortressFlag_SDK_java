@@ -6,6 +6,7 @@ import com.fortressflag.server.Context;
 import com.fortressflag.server.Diagnostics;
 import com.fortressflag.server.FortressFlag;
 import com.fortressflag.server.MalformedKeyException;
+import com.fortressflag.server.SignaturePolicy;
 import java.time.Duration;
 import java.time.LocalTime;
 import java.time.format.DateTimeFormatter;
@@ -34,7 +35,10 @@ public final class Run {
         Client client;
         try {
             Configuration.Builder builder = Configuration.builder(env("FF_SERVER_KEY", SEED_KEY))
-                    .baseUrl(env("FF_BASE_URL", "http://localhost:8080"));
+                    .baseUrl(env("FF_BASE_URL", "http://localhost:8080"))
+                    // The local dev backend is unsigned unless FF_SIGNING_* is exported; a
+                    // production build keeps the default (required, production key).
+                    .signature(SignaturePolicy.disabled());
             String cachePath = System.getenv("FF_CACHE_PATH");
             if (cachePath != null && !cachePath.isEmpty()) {
                 builder.cachePath(cachePath);
