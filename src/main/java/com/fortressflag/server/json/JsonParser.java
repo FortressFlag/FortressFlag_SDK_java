@@ -11,7 +11,7 @@ import java.util.Map;
 import java.util.regex.Pattern;
 
 /**
- * The bounded JSON parser (CLAUDE.md §3; ADR-0020 — the user chose owning this surface
+ * The bounded JSON parser (CLAUDE.md §3; ADR-0020 — the maintainer chose owning this surface
  * over the first runtime dependency in any FortressFlag SDK).
  *
  * <p>Recursive descent over input the transport already capped at 1 MiB. The bounds are

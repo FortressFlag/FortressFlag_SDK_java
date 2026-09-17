@@ -1,10 +1,11 @@
 # FortressFlag_SDK_java — Agent & Contributor Guide
 
 > **This repo inherits the FortressFlag founding principles.** The canonical document lives in
-> the backend repo — read it before design decisions:
+> the backend repo (`FortressFlag_Backend/CLAUDE.md`, the founding document) — read it before
+> design decisions.
 >
-> - GitHub: <https://github.com/FortressFlag/FortressFlag_Backend/blob/development/CLAUDE.md>
-> - Local clone: `~/Workspace/FortressFlag_Backend/CLAUDE.md`
+> ADR-nnnn refers to FortressFlag's internal architecture decision records. The public contract
+> every SDK implements is `FortressFlag_Standards`; decision records are not published.
 >
 > Priority order when in doubt: **Security → Compliance → Efficiency → Cost.**
 
@@ -46,8 +47,8 @@ and evaluates flags **locally, in-process**. It implements
 ## 3. The JSON parser is in-repo, bounded by design (ADR-0020)
 
 Java's stdlib has no JSON parser, and the zero-dependency rule collides with reality
-exactly once. The user chose owning the surface over the first runtime dependency in any
-FortressFlag SDK (jackson-core was rejected by name; reopening it is a user conversation).
+exactly once. The maintainer chose owning the surface over the first runtime dependency in any
+FortressFlag SDK (jackson-core was rejected by name; reopening it is a maintainer conversation).
 The rules that keep ~300 lines of parser defensible:
 
 - Package-private, `com.fortressflag.server.json`; recursive descent over bytes the
