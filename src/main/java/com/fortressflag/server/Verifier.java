@@ -1,5 +1,11 @@
 package com.fortressflag.server;
 
+import java.security.GeneralSecurityException;
+import java.security.KeyFactory;
+import java.security.PublicKey;
+import java.security.Signature;
+import java.security.spec.InvalidKeySpecException;
+import java.security.spec.X509EncodedKeySpec;
 import java.time.Duration;
 import java.time.Instant;
 
@@ -67,6 +73,15 @@ final class Verifier {
     /** Forgives a wrong server-or-host clock; 300 s is the ceiling. */
     private static final Duration CLOCK_SKEW_TOLERANCE = Duration.ofSeconds(300);
 
+    /** A raw Ed25519 public key is exactly this long; anything else in the trust store is
+     * treated as an unknown key, so one bad entry cannot disable a rotation set. */
+    private static final int ED25519_PUBLIC_KEY_LENGTH = 32;
+
+    /** The SPKI (X.509 SubjectPublicKeyInfo) prefix for an Ed25519 key: {@code KeyFactory}
+     * takes DER, the contract publishes raw 32 bytes, and this is the difference.
+     * {@code EdECPublicKeySpec} would need our own point decoding instead. */
+    private static final byte[] SPKI_ED25519_PREFIX = TrustedKeys.decodeHex("302a300506032b6570032100");
+
     /** Runs every check in the contract's order and reports the outcome. */
     static Result verify(byte[] raw, SignaturePolicy policy, Expectations expect) {
         Envelope.Parsed parsed = Envelope.parseEnvelope(raw);
@@ -75,7 +90,7 @@ final class Verifier {
         }
 
         if (policy.isRequired()) {
-            RejectionCode code = checkSignature(parsed.envelope(), policy);
+            RejectionCode code = checkSignature(parsed.envelope(), parsed.payloadBytes(), policy);
             if (code != null) {
                 return Result.rejected(code);
             }
@@ -117,22 +132,18 @@ final class Verifier {
     }
 
     /**
-     * The signature PLUMBING with the crypto primitive deliberately absent
-     * (ADR-0015/0016): backend M4's algorithm ADR has not shipped. A missing signature
-     * under a required policy is rejected (fail closed, the shipped client-SDK posture
-     * byte for byte); the {@code algorithm:keyID:signature} splitting and trust-store
-     * lookup are real; and a signature that survives those checks is still rejected as
-     * BAD_SIGNATURE, because no primitive exists to accept it. When M4 lands, its ADR
-     * decides the primitive and this is where it goes — with a real trust store, this stub
-     * can reject valid payloads but can never accept a forged one.
+     * Pure Ed25519 (RFC 8032) over the payload's exact bytes as transmitted — never a
+     * re-serialisation, never a prehashed variant (backend ADR-0025; contract-v1
+     * §Signing keys). Order: signature before parse, so no field is read before it is
+     * trusted. Package-private so the published vectors can drive it directly.
      */
-    private static RejectionCode checkSignature(Envelope.Wire envelope, SignaturePolicy policy) {
+    static RejectionCode checkSignature(Envelope.Wire envelope, byte[] payloadBytes, SignaturePolicy policy) {
         String sig = envelope.sig();
         if (!envelope.sigPresent() || sig == null || sig.isEmpty()) {
             return RejectionCode.MISSING_SIGNATURE;
         }
-        // Split at the first two colons so a key ID may contain a colon later without a
-        // breaking parse change.
+        // Split at the first two colons: the SIGNATURE may carry extra colons, the key ID
+        // never can (the backend refuses a colon in a key ID for this reason).
         int first = sig.indexOf(':');
         int second = first >= 0 ? sig.indexOf(':', first + 1) : -1;
         if (first < 0 || second < 0) {
@@ -144,14 +155,39 @@ final class Verifier {
         if (!algorithm.equals("ed25519")) {
             return RejectionCode.UNSUPPORTED_SIGNATURE_ALGORITHM;
         }
-        if (signature.isEmpty() || Envelope.decodeBase64Url(signature) == null) {
+        byte[] signatureBytes = signature.isEmpty() ? null : Envelope.decodeBase64Url(signature);
+        if (signatureBytes == null) {
             return RejectionCode.MALFORMED_SIGNATURE;
         }
-        if (!policy.knowsKeyId(keyId)) {
+        byte[] rawKey = policy.trustedKey(keyId);
+        if (rawKey == null || rawKey.length != ED25519_PUBLIC_KEY_LENGTH) {
             return RejectionCode.UNKNOWN_KEY_ID;
         }
-        // The primitive gap, made explicit: the payload bytes are deliberately unused
-        // beyond this point until M4 supplies the algorithm.
-        return RejectionCode.BAD_SIGNATURE;
+        PublicKey publicKey;
+        try {
+            byte[] spki = new byte[SPKI_ED25519_PREFIX.length + rawKey.length];
+            System.arraycopy(SPKI_ED25519_PREFIX, 0, spki, 0, SPKI_ED25519_PREFIX.length);
+            System.arraycopy(rawKey, 0, spki, SPKI_ED25519_PREFIX.length, rawKey.length);
+            publicKey = KeyFactory.getInstance("Ed25519").generatePublic(new X509EncodedKeySpec(spki));
+        } catch (InvalidKeySpecException exception) {
+            // A malformed key in our own trust store: "cannot verify with this key", not a
+            // hard failure — the iOS rule, ported.
+            return RejectionCode.UNKNOWN_KEY_ID;
+        } catch (GeneralSecurityException exception) {
+            // No Ed25519 provider (impossible on 17+, JEP 339) — nothing can be verified.
+            return RejectionCode.BAD_SIGNATURE;
+        }
+        try {
+            Signature verifier = Signature.getInstance("Ed25519");
+            verifier.initVerify(publicKey);
+            verifier.update(payloadBytes);
+            if (!verifier.verify(signatureBytes)) {
+                return RejectionCode.BAD_SIGNATURE;
+            }
+        } catch (GeneralSecurityException exception) {
+            // Wrong-length or otherwise undecodable signature bytes.
+            return RejectionCode.BAD_SIGNATURE;
+        }
+        return null;
     }
 }

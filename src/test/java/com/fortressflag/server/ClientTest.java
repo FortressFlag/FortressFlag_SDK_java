@@ -29,7 +29,7 @@ final class ClientTest {
         int calls;
 
         ScriptedTransport(List<FetchOutcome> outcomes) {
-            super(Configuration.builder(Fixtures.KEY).build());
+            super(Configuration.builder(Fixtures.KEY).signature(SignaturePolicy.disabled()).build());
             this.outcomes = new ArrayList<>(outcomes);
         }
 
@@ -47,7 +47,9 @@ final class ClientTest {
     }
 
     static Client client(Transport transport, String cachePath) {
-        Configuration.Builder builder = Configuration.builder(Fixtures.KEY);
+        // Fixtures are unsigned: the default policy is required-with-production (ADR-0025).
+        Configuration.Builder builder = Configuration.builder(Fixtures.KEY)
+                .signature(SignaturePolicy.disabled());
         if (cachePath != null) {
             builder.cachePath(cachePath);
         }

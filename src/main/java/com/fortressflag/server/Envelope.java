@@ -12,8 +12,8 @@ import java.util.regex.Pattern;
 
 /**
  * The wire envelope (server-contract-v1.md): the client envelope design, reused. {@code
- * sig} is omitted until backend M4 ships; when present it is a detached signature over the
- * payload's exact base64url bytes.
+ * sig} is a detached Ed25519 signature over the payload's exact decoded bytes (backend
+ * ADR-0025); only a local dev backend with no signing key omits it.
  */
 final class Envelope {
     private Envelope() {}

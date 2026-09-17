@@ -87,7 +87,7 @@ final class ChaosTest {
         volatile FetchOutcome next = FetchOutcome.of(FetchKind.TRANSPORT_ERROR);
 
         PushTransport() {
-            super(Configuration.builder(Fixtures.KEY).build());
+            super(Configuration.builder(Fixtures.KEY).signature(SignaturePolicy.disabled()).build());
         }
 
         @Override
@@ -97,7 +97,9 @@ final class ChaosTest {
     }
 
     private static Client client(Transport transport, String cachePath) {
-        Configuration.Builder builder = Configuration.builder(Fixtures.KEY);
+        // Fixtures are unsigned: the default policy is required-with-production (ADR-0025).
+        Configuration.Builder builder = Configuration.builder(Fixtures.KEY)
+                .signature(SignaturePolicy.disabled());
         if (cachePath != null) {
             builder.cachePath(cachePath);
         }

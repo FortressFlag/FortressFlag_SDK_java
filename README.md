@@ -24,5 +24,11 @@ It implements
 never throw and the poller never blocks JVM exit. See `CLAUDE.md` for the rules this repo
 holds itself to.
 
+Every ruleset carries an Ed25519 signature that the SDK verifies against FortressFlag's
+production key before a single flag is served — fail closed, on by default (backend
+ADR-0025). Against a local backend with no signing key, opt out explicitly with
+`.signature(SignaturePolicy.disabled())`; for staging, pass its key with
+`SignaturePolicy.required(...)`.
+
 **The `ffs_` server key is a genuine secret** — treat it like a database password. Store it
 in an environment variable or a secret manager, never in code or logs.
