@@ -1,14 +1,14 @@
 // The library build. ZERO runtime dependencies (ADR-0020): the dependencies block below
 // holds ONLY testImplementation, and CI greps this file for implementation(/api( — the
 // go.sum-must-not-exist gate, translated. A runtime dependency is a supply-chain decision
-// the user owns: ask, don't add. There is deliberately no maven-publish plugin: Maven
+// the maintainer owns: ask, don't add. There is deliberately no maven-publish plugin: Maven
 // Central publication is the reserved release decision; do not scaffold it "for later".
 plugins {
     `java-library`
 }
 
 group = "com.fortressflag"
-version = "0.1.0"
+version = "1.0.0"
 
 java {
     toolchain {
